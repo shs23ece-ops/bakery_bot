@@ -1,30 +1,42 @@
 from flask import Flask, request
+import os
+import openai
 from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
 
-@app.route('/')
+# Load OpenAI API key from environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+@app.route("/")
 def home():
-    return "✅ Bakery WhatsApp Chatbot is active!"
+    return "WhatsApp Bakery Bot is running!"
 
-@app.route('/whatsapp', methods=['POST'])
-def webhook():
-    msg = request.form.get('Body').lower()
-    response = MessagingResponse()
-    reply = response.message()
+@app.route("/message", methods=["POST"])
+def message():
+    incoming_msg = request.values.get("Body", "").strip()
+    resp = MessagingResponse()
 
-    if 'cake' in msg:
-        reply.body("🎂 We have Chocolate, Red Velvet, and Blueberry cakes! Want to order one?")
-    elif 'menu' in msg:
-        reply.body("🍰 Menu:\n- Cakes\n- Cupcakes\n- Brownies\n- Pastries\nType what you’d like to know about!")
-    elif 'order' in msg:
-        reply.body("🧾 Please type your order like:\n'1 Chocolate cake for tomorrow 5pm'")
-    elif 'thanks' in msg or 'thank you' in msg:
-        reply.body("💖 You’re most welcome! Sweet wishes from Glen’s Bakehouse 🍰")
-    else:
-        reply.body("👋 Hi! I’m your *Bakery Chatbot*. Type 'menu' to see what’s fresh today!")
-    
-    return str(response)
+    if incoming_msg:
+        try:
+            # Call OpenAI API to generate reply
+            completion = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": incoming_msg}],
+                max_tokens=150
+            )
+            reply = completion['choices'][0]['message']['content']
+            resp.message(reply)
+        except Exception as e:
+            # If OpenAI API fails, return an error message
+            resp.message("Sorry, something went wrong. Please try again later.")
+            print("OpenAI Error:", e)
+
+    return str(resp)
 
 if __name__ == "__main__":
+    # Bind to Render port
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
     app.run(port=5000, debug=True)
