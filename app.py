@@ -1,7 +1,13 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
+import os
 
 app = Flask(__name__)
+
+# Add this route for the home page
+@app.route("/", methods=["GET"])
+def home():
+    return "🍰 Krishna Bakery & Sweets WhatsApp Bot is live! Use your WhatsApp to chat with me."
 
 # Bakery menu with categories and prices
 MENU = {
