@@ -5,25 +5,39 @@ import os
 
 app = Flask(__name__)
 
-# Load OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Example bakery menu (used for fallback or quick replies)
+# Fixed bakery menu for greetings
+BAKERY_MENU_TEXT = (
+    "🍰 Menu:\n"
+    "- Cakes\n"
+    "- Cupcakes\n"
+    "- Brownies\n"
+    "- Pastries\n\n"
+    "Type what you’d like to know about!"
+)
+
+# Example bakery items with prices
 BAKERY_MENU = {
     "cupcakes": "$2 each",
     "chocolate cake": "$20 for 1kg",
     "vanilla cake": "$18 for 1kg",
     "brownies": "$3 each",
-    "croissants": "$2.5 each"
+    "pastries": "$2.5 each"
 }
 
 @app.route("/message", methods=["POST"])
 def message():
-    incoming_msg = request.values.get("Body", "").lower()
+    incoming_msg = request.values.get("Body", "").strip().lower()
     resp = MessagingResponse()
 
+    # If user says hi or hello, send fixed menu
+    if incoming_msg in ["hi", "hello", "hey", "menu"]:
+        resp.message(BAKERY_MENU_TEXT)
+        return str(resp)
+
     try:
-        # Use OpenAI GPT to generate bakery-specific reply
+        # AI reply for bakery-specific queries
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -32,8 +46,8 @@ def message():
                     "content": (
                         "You are a helpful bakery assistant. "
                         "Answer questions about cakes, cupcakes, pastries, prices, and store timings. "
-                        "If someone asks about items, provide prices from the menu. "
-                        "Always be friendly and polite."
+                        "Always be friendly and polite. "
+                        "If someone asks about an item, give the price from the menu."
                     )
                 },
                 {"role": "user", "content": incoming_msg}
@@ -44,11 +58,11 @@ def message():
         resp.message(reply)
 
     except Exception as e:
-        # Fallback if OpenAI API fails
+        # Fallback: list menu with prices
         fallback_msg = "Hello! Here’s our bakery menu:\n"
         for item, price in BAKERY_MENU.items():
             fallback_msg += f"- {item.title()}: {price}\n"
-        fallback_msg += "\nVisit us or ask any bakery-related question!"
+        fallback_msg += "\nAsk me about any item or price!"
         resp.message(fallback_msg)
         print("OpenAI Error:", e)
 
