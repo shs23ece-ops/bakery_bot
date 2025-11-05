@@ -4,12 +4,7 @@ import os
 
 app = Flask(__name__)
 
-# Add this route for the home page
-@app.route("/", methods=["GET"])
-def home():
-    return "🍰 Krishna Bakery & Sweets WhatsApp Bot is live! Use your WhatsApp to chat with me."
-
-# Bakery menu with categories and prices
+# Bakery menu
 MENU = {
     "cakes": {
         "Chocolate Cake": 500,
@@ -31,7 +26,7 @@ MENU = {
     }
 }
 
-# Track user session
+# In-memory user sessions
 user_sessions = {}
 
 def format_menu():
@@ -43,26 +38,35 @@ def format_menu():
     msg += "\nType 'checkout' to finish your order."
     return msg
 
+@app.route("/", methods=["GET"])
+def home():
+    return "🍰 Krishna Bakery & Sweets WhatsApp Bot is live!"
+
 @app.route("/message", methods=["POST"])
-def message():
+def whatsapp_reply():
     incoming_msg = request.values.get('Body', '').strip()
     from_number = request.values.get('From', '')
+    
+    print(f"Incoming message from {from_number}: {incoming_msg}")  # Debug
 
     resp = MessagingResponse()
-
+    
+    # Initialize session if new user
     if from_number not in user_sessions:
         user_sessions[from_number] = {"cart": []}
-
+    
     session = user_sessions[from_number]
 
     # Greeting
     if incoming_msg.lower() in ["hi", "hello", "hey"]:
         reply = ("Hi! I am Krishna Bakery & Sweets Chatbot 🍰.\n"
-                 "You can view our menu by typing 'menu'. "
+                 "You can view our menu by typing 'menu'.\n"
                  "I can also help you place orders.")
+    
     # Show menu
     elif "menu" in incoming_msg.lower():
         reply = format_menu()
+    
     # Checkout
     elif "checkout" in incoming_msg.lower():
         if not session['cart']:
@@ -83,6 +87,7 @@ def message():
             reply = (f"🛒 Your Order Summary:\n{items_list}"
                      f"Total: ₹{total}\nThank you for ordering at Krishna Bakery! 🙏")
             session['cart'] = []
+    
     # Add item to cart
     else:
         parts = incoming_msg.split()
