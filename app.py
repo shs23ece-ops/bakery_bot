@@ -3,9 +3,8 @@ from twilio.twiml.messaging_response import MessagingResponse
 import openai
 import os
 
-app = Flask(__name__)
+app = Flask(__name__)  # fixed here
 
-# Get OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Bakery menu with categories, prices, and image URLs
@@ -64,6 +63,10 @@ Customer message: "{user_message}"
         print("OpenAI Error:", e)
         return "Sorry, something went wrong. Please try again later."
 
+@app.route("/", methods=["GET"])
+def home():  # root route to prevent 404
+    return "Krishna Bakery Chatbot is running!", 200
+
 @app.route("/message", methods=["POST"])
 def message():
     incoming_msg = request.values.get('Body', '').strip()
@@ -92,7 +95,6 @@ def message():
             total = 0
             items_list = ""
             for item in session['cart']:
-                # Find price in MENU
                 price = 0
                 for cat_items in MENU.values():
                     if item['item'].lower() in map(str.lower, cat_items.keys()):
@@ -104,7 +106,7 @@ def message():
                      f"Total: ₹{total}\nThank you for ordering at Krishna Bakery! 🙏")
             session['cart'] = []
     # Order handling
-    else:
+    elif any(word.lower() in " ".join(MENU.keys()) for word in incoming_msg.split()):
         parts = incoming_msg.split()
         qty = int(parts[-1]) if parts[-1].isdigit() else 1
         item_name = " ".join(parts[:-1]) if parts[-1].isdigit() else incoming_msg
@@ -125,10 +127,14 @@ def message():
                 break
         if not found:
             reply = get_ai_response(incoming_msg)
+    # Fallback AI response
+    else:
+        reply = get_ai_response(incoming_msg)
 
     resp.message(reply)
     return str(resp)
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # fixed here
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+.
